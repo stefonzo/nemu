@@ -12,9 +12,9 @@
 /*
     TODO:
         -put flag code into functions (can I cast x & y registers to input for helper functions?)
-        -figure out test to see if page has been crossed in memory access
+        -put address code into functions
+        -figure out test to see if page has been crossed in memory access (used test from rubbermallet, need to convince myself it works)
         -finish instructions
-        -redo cycles (for now I think its fine but I need to do more research so I can figure out if it will be suitable for timing purposes)
         -testing
  */
 
@@ -32,7 +32,7 @@
 class mos6502 {
 private:
     //state variables for 6502 cpu registers
-    uint16_t pc;
+    uint16_t pc, address;
     uint8_t a, x, y, sp, flag;
     uint64_t cycles_count, executed_instructions;
     uint8_t (*read)(uint16_t);
@@ -43,6 +43,15 @@ private:
     void CarryCheck(uint16_t value);
     void OverflowCheck(uint16_t value);
     void SignCheck(uint16_t value);
+    void ImmediateAddress();
+    void AbsoluteAddress();
+    void ZeroPageAddress();
+    void AbsoluteXAddress();
+    void AbsoluteYAddress();
+    void ZeroPageXAddress();
+    void ZeroPageYAddress();
+    void ZeroPageXIndirectAddress();
+    void ZeroPageYIndirectAddress();
                                     //Assembly:       Opcode   Cycles   Bytes
     void InitializeOpcodeTable();   //-----------------------------------------
     void ADC_IMMEDIATE();           //ADC #$nn        $69      2        2
@@ -68,11 +77,25 @@ private:
     void JMP_ABSOLUTE_INDIRECT();   //JMP ($nnnn)     $6C      5        3
     void LDA_IMMEDIATE();           //LDA #$nn        $A9      2        2
     void LDA_ABSOLUTE();            //LDA $nnnn       $AD      4        3
+    void LDA_X_ABSOLUTE();          //LDA $nnnn, x    $BD      4+p      3
+    void LDA_Y_ABSOLUTE();          //LDA $nnnn, y    $B9      4+p      3
     void LDA_ZEROPAGE();            //LDA $nn         $A5      3        2
+    void LDA_X_ZEROPAGE();          //LDA $nn, x      $B5      4        2
     void NOP();                     //NOP             $EA      2        1
     void PHA();                     //PHA             $48      3        1
     void PHP();                     //PHP             $08      3        1
-    
+    void PLA();                     //PLA             $68      4        1
+    void PLP();                     //PLP             $28      4        1
+    void RTS();                     //RTS             $60      6        1
+    void SEC();                     //SEC             $38      2        1
+    void SED();                     //SED             $F8      2        1
+    void SEI();                     //SEI             $78      2        1
+    void TAX();                     //TAX             $AA      2        1
+    void TAY();                     //TAY             $A8      2        1
+    void TSX();                     //TSX             $BA      2        1
+    void TXA();                     //TXA             $8A      2        1
+    void TXS();                     //TXS             $9A      2        1
+    void TYA();                     //TYA             $98      2        1
 public:
     mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t));
     void Reset6502();

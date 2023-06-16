@@ -1,5 +1,5 @@
 #include "cpu.hpp"
-
+//flag helper functions
 void mos6502::ZeroCheck(uint16_t value) {
     if (value == 0) {
         flag |= Z;
@@ -28,8 +28,48 @@ void mos6502::SignCheck(uint16_t value) {
         flag &= ~(N);
     }
 }
+//Address helper functions
+void mos6502::ImmediateAddress() {
+    address = pc++;
+}
+void mos6502::AbsoluteAddress() {
+    uint8_t la = read(pc++);
+    uint8_t ha = read(pc++);
+    address = (uint16_t(ha) << 8) | la;
+}
+void mos6502::ZeroPageAddress() {
+    address = (uint16_t)read(pc++);
+}
+void mos6502::AbsoluteXAddress() {
+    uint8_t la = read(pc++);
+    uint8_t ha = read(pc++);
+    address = (uint16_t(ha) << 8) | la;
+    uint16_t startpage = address & 0xFF00;
+    address += x;
+    if (startpage != (address & 0xFF00)) cycles_count++; //page check from rubbermallet
+}
+void mos6502::AbsoluteYAddress() {
+    uint8_t la = read(pc++);
+    uint8_t ha = read(pc++);
+    address = (uint16_t(ha) << 8) | la;
+    uint16_t startpage = address & 0xFF00;
+    address += y;
+    if (startpage != (address & 0xFF00)) cycles_count++;
+}
+void mos6502::ZeroPageXAddress() {
+    address = ((uint16_t)read(pc++) + x) & 0x00FF;
+}
+void mos6502::ZeroPageYAddress() {
+    address = ((uint16_t)read(pc++) + y) & 0x00FF;
+}
+void mos6502::ZeroPageXIndirectAddress() {
+    
+}
+void mos6502::ZeroPageYIndirectAddress() {
+    
+}
 void mos6502::ADC_IMMEDIATE() {
-    uint16_t address = pc++;
+    ImmediateAddress();
     uint8_t m = read(address);
     uint8_t c = flag & C;
     uint16_t sum = a + m + c;
@@ -41,7 +81,7 @@ void mos6502::ADC_IMMEDIATE() {
     cycles_count += 2;
 }
 void mos6502::ADC_ZEROPAGE() {
-    uint16_t address = (uint16_t)read(pc++);
+    ZeroPageAddress();
     uint8_t m = read(address);
     uint8_t c = flag & C;
     uint16_t sum = a + m + c;
@@ -53,9 +93,7 @@ void mos6502::ADC_ZEROPAGE() {
     cycles_count += 2;
 }
 void mos6502::ADC_ABSOLUTE() {
-    uint8_t la = read(pc++);
-    uint8_t ha = read(pc++);
-    uint16_t address = (uint16_t(ha) << 8) | la;
+    AbsoluteAddress();
     uint8_t m = read(address);
     uint8_t c = flag & C;
     uint16_t sum = a + m + c;
@@ -67,13 +105,40 @@ void mos6502::ADC_ABSOLUTE() {
     cycles_count += 4;
 }
 void mos6502::ADC_X_ABSOLUTE() {
-    
+    AbsoluteXAddress();
+    uint8_t m = read(address);
+    uint8_t c = flag & C;
+    uint16_t sum = a + m + c;
+    CarryCheck(sum);
+    ZeroCheck(sum);
+    SignCheck(sum);
+    OverflowCheck(sum);
+    a = (uint8_t)sum;
+    cycles_count += 4;
 }
 void mos6502::ADC_Y_ABSOLUTE() {
-    
+    AbsoluteYAddress();
+    uint8_t m = read(address);
+    uint8_t c = flag & C;
+    uint16_t sum = a + m + c;
+    CarryCheck(sum);
+    ZeroCheck(sum);
+    SignCheck(sum);
+    OverflowCheck(sum);
+    a = (uint8_t)sum;
+    cycles_count += 4;
 }
 void mos6502::ADC_X_ZEROPAGE() {
-    
+    ZeroPageXAddress();
+    uint8_t m = read(address);
+    uint8_t c = flag & C;
+    uint16_t sum = a + m + c;
+    CarryCheck(sum);
+    ZeroCheck(sum);
+    SignCheck(sum);
+    OverflowCheck(sum);
+    a = (uint8_t)sum;
+    cycles_count += 4;
 }
 void mos6502::ADC_X_ZEROPAGE_INDIRECT() {
     
@@ -109,33 +174,17 @@ void mos6502::CLV() {
 void mos6502::DEX() {
     x -= 1;
     //check N flag
-    if (x & N) {
-        flag |= N;
-    } else {
-        flag &= ~(N);
-    }
+    SignCheck((uint16_t)x);
     //check Z flag
-    if (x == 0x00) {
-        flag |= Z;
-    } else {
-        flag &= ~(Z);
-    }
+    ZeroCheck((uint16_t)x);
     cycles_count += 2;
 }
 void mos6502::DEY() {
     y -= 1;
     //check N flag
-    if (y & N) {
-        flag |= N;
-    } else {
-        flag &= ~(N);
-    }
+    SignCheck((uint16_t)y);
     //check Z flag
-    if (y == 0x00) {
-        flag |= Z;
-    } else {
-        flag &= ~(Z);
-    }
+    ZeroCheck((uint16_t)y);
     cycles_count += 2;
 }
 void mos6502::INX() {
@@ -169,38 +218,51 @@ void mos6502::INY() {
     cycles_count += 2;
 }
 void mos6502::JMP_ABSOLUTE() {
-    uint8_t la = read(pc++);
-    uint8_t ha = read(pc++);
-    uint16_t address = (uint16_t(ha) << 8) | la;
+    AbsoluteAddress();
     pc = address;
     cycles_count += 3;
 }
 void mos6502::JMP_ABSOLUTE_INDIRECT() {
     uint8_t la = read(pc++);
     uint8_t ha = read(pc++);
-    uint16_t jmp_address = (uint16_t(ha) << 8) | la;
-    la = read(jmp_address++);
-    ha = read(jmp_address);
-    jmp_address = (uint16_t(ha) << 8) | la;
-    pc = jmp_address;
+    address = (uint16_t(ha) << 8) | la;
+    la = read(address++);
+    ha = read(address);
+    address = (uint16_t(ha) << 8) | la;
+    pc = address;
     cycles_count += 5;
 }
 void mos6502::LDA_IMMEDIATE() {
-    uint16_t address = pc++;
+    ImmediateAddress();
     a = read(address);
     cycles_count += 2;
 }
 void mos6502::LDA_ABSOLUTE() {
-    uint8_t la = read(pc++);
-    uint8_t ha = read(pc++);
-    uint16_t address = (uint16_t(ha) << 8) | la;
+    AbsoluteAddress();
+    a = read(address);
+    cycles_count += 4;
+}
+void mos6502::LDA_X_ABSOLUTE() {
+    AbsoluteXAddress();
+    a = read(address);
+    cycles_count += 4;
+}
+void mos6502::LDA_Y_ABSOLUTE() {
+    AbsoluteYAddress();
     a = read(address);
     cycles_count += 4;
 }
 void mos6502::LDA_ZEROPAGE() {
-    uint16_t address = (uint16_t)read(pc++);
+    ZeroPageAddress();
     a = read(address);
     cycles_count += 3;
+}
+void mos6502::LDA_X_ZEROPAGE() {
+    address = (uint16_t)read(pc++);
+    address += x;
+    address &= 0x00FF; //zero page wrap around
+    a = read(address);
+    cycles_count += 4;
 }
 void mos6502::NOP() {
     cycles_count += 2;
@@ -210,8 +272,69 @@ void mos6502::PHA() {
     cycles_count += 3;
 }
 void mos6502::PHP() {
-    write(SB + sp--, a);
+    write(SB + sp--, flag | 0x10);
     cycles_count += 3;
+}
+void mos6502::PLA() {
+    sp++;
+    a = read(SB + sp);
+    SignCheck((uint16_t)a);
+    ZeroCheck((uint16_t)a);
+    cycles_count += 4;
+}
+void mos6502::PLP() {
+    sp++;
+    flag = (read(SB + sp) & 0xCF) | 0x20;
+    cycles_count +=4;
+}
+void mos6502::RTS() {
+    
+}
+void mos6502::SEC() {
+    flag |= C;
+    cycles_count += 2;
+}
+void mos6502::SED() {
+    flag |= D;
+    cycles_count += 2;
+}
+void mos6502::SEI() {
+    flag |= I;
+    cycles_count += 2;
+}
+void mos6502::TAX() {
+    x = a;
+    SignCheck((uint16_t)x);
+    ZeroCheck((uint16_t)x);
+    cycles_count += 2;
+}
+void mos6502::TAY() {
+    y = a;
+    SignCheck((uint16_t)y);
+    ZeroCheck((uint16_t)y);
+    cycles_count += 2;
+}
+void mos6502::TSX() {
+    x = sp;
+    SignCheck((uint16_t)x);
+    ZeroCheck((uint16_t)x);
+    cycles_count += 2;
+}
+void mos6502::TXA() {
+    a = x;
+    SignCheck((uint16_t)a);
+    ZeroCheck((uint16_t)a);
+    cycles_count += 2;
+}
+void mos6502::TXS() {
+    sp = x;
+    cycles_count += 2;
+}
+void mos6502::TYA() {
+    a = y;
+    SignCheck((uint16_t)a);
+    ZeroCheck((uint16_t)a);
+    cycles_count += 2;
 }
 void mos6502::InitializeOpcodeTable() {
     opcodeTable[0x69] = &mos6502::ADC_IMMEDIATE;
@@ -237,13 +360,26 @@ void mos6502::InitializeOpcodeTable() {
     opcodeTable[0x6C] = &mos6502::JMP_ABSOLUTE_INDIRECT;
     opcodeTable[0xA9] = &mos6502::LDA_IMMEDIATE;
     opcodeTable[0xAD] = &mos6502::LDA_ABSOLUTE;
+    opcodeTable[0xBD] = &mos6502::LDA_X_ABSOLUTE;
+    opcodeTable[0xB9] = &mos6502::LDA_Y_ABSOLUTE;
     opcodeTable[0xA5] = &mos6502::LDA_ZEROPAGE;
+    opcodeTable[0xB5] = &mos6502::LDA_X_ZEROPAGE;
     opcodeTable[0xEA] = &mos6502::NOP;
     opcodeTable[0x48] = &mos6502::PHA;
     opcodeTable[0x08] = &mos6502::PHP;
-    
+    opcodeTable[0x68] = &mos6502::PLA;
+    opcodeTable[0x28] = &mos6502::PLP;
+    opcodeTable[0x60] = &mos6502::RTS;
+    opcodeTable[0x38] = &mos6502::SEC;
+    opcodeTable[0xF8] = &mos6502::SED;
+    opcodeTable[0x78] = &mos6502::SEI;
+    opcodeTable[0xAA] = &mos6502::TAX;
+    opcodeTable[0xA8] = &mos6502::TAY;
+    opcodeTable[0xBA] = &mos6502::TSX;
+    opcodeTable[0x8A] = &mos6502::TXA;
+    opcodeTable[0x9A] = &mos6502::TXS;
+    opcodeTable[0x98] = &mos6502::TYA;
 }
-
 mos6502::mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t)) {
     read = Read;
     write = Write;
