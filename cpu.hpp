@@ -40,10 +40,14 @@ private:
     void (*write)(uint16_t, uint8_t);
     typedef void (mos6502::*InstructionMethod)(); //function pointer for jump table
     typedef void (mos6502::*AddressMethod)();
-    struct Instruction {
+    struct Instruction { //idea from Gian's program
         AddressMethod address_mode;
-        InstructionMethod instrution;
+        InstructionMethod instruction;
+        uint8_t cycles;
     };
+    Instruction opcodeTableInstruction;
+    std::unordered_map<uint8_t, Instruction> opcodeTable;
+    void InitializeOpcodeTable();
     void ZeroCheck(uint16_t value);
     void CarryCheck(uint16_t value);
     void OverflowCheck(uint16_t value);
@@ -57,7 +61,6 @@ private:
     void ZeroPageYAddress();
     void ZeroPageXIndirectAddress();
     void ZeroPageYIndirectAddress(bool addExtraCycle);
-    void InitializeOpcodeTable();
     void ADC();
     void BCC();
     void BCS();

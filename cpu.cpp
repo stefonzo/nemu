@@ -108,40 +108,33 @@ void mos6502::CLD() {
 }
 void mos6502::CLI() {
     flag &= 0xFB;
-    cycles_count += 2;
 }
 void mos6502::CLV() {
     flag &= 0xBF;
-    cycles_count += 2;
 }
 void mos6502::DEX() {
     x -= 1;
     SignCheck((uint16_t)x);
     ZeroCheck((uint16_t)x);
-    cycles_count += 2;
 }
 void mos6502::DEY() {
     y -= 1;
     SignCheck((uint16_t)y);
     ZeroCheck((uint16_t)y);
-    cycles_count += 2;
 }
 void mos6502::INX() {
     x += 1;
     SignCheck((uint16_t)x);
     ZeroCheck((uint16_t)x);
-    cycles_count += 2;
 }
 void mos6502::INY() {
     y += 1;
     SignCheck((uint16_t)y);
     ZeroCheck((uint16_t)y);
-    cycles_count += 2;
 }
 void mos6502::JMP_ABSOLUTE() {
     AbsoluteAddress();
     pc = address;
-    cycles_count += 3;
 }
 void mos6502::JMP_ABSOLUTE_INDIRECT() {
     uint8_t la = read(pc++);
@@ -151,51 +144,40 @@ void mos6502::JMP_ABSOLUTE_INDIRECT() {
     ha = read(address);
     address = (uint16_t(ha) << 8) | la;
     pc = address;
-    cycles_count += 5;
 }
 void mos6502::LDA() {
     ImmediateAddress();
     a = read(address);
-    cycles_count += 2;
 }
 void mos6502::NOP() {
-    cycles_count += 2;
+    //do nothing
 }
 void mos6502::PHA() {
     write(SB + sp--, a);
-    cycles_count += 3;
 }
 void mos6502::PHP() {
     write(SB + sp--, flag | 0x10);
-    cycles_count += 3;
 }
 void mos6502::PLA() {
     sp++;
     a = read(SB + sp);
     SignCheck((uint16_t)a);
     ZeroCheck((uint16_t)a);
-    cycles_count += 4;
 }
 void mos6502::PLP() {
     sp++;
-    flag = (read(SB + sp) & 0xCF) | 0x20;
-    cycles_count +=4;
-}
+    flag = (read(SB + sp) & 0xCF) | 0x20;}
 void mos6502::RTS() {
     
 }
 void mos6502::SEC() {
     flag |= C;
-    cycles_count += 2;
 }
 void mos6502::SED() {
     flag |= D;
-    cycles_count += 2;
 }
 void mos6502::SEI() {
-    flag |= I;
-    cycles_count += 2;
-}
+    flag |= I;}
 void mos6502::STA() {
     write(address, a);
 }
@@ -204,38 +186,35 @@ void mos6502::TAX() {
     x = a;
     SignCheck((uint16_t)x);
     ZeroCheck((uint16_t)x);
-    cycles_count += 2;
 }
 void mos6502::TAY() {
     y = a;
     SignCheck((uint16_t)y);
-    ZeroCheck((uint16_t)y);
-    cycles_count += 2;
-}
+    ZeroCheck((uint16_t)y);}
 void mos6502::TSX() {
     x = sp;
     SignCheck((uint16_t)x);
     ZeroCheck((uint16_t)x);
-    cycles_count += 2;
 }
 void mos6502::TXA() {
     a = x;
     SignCheck((uint16_t)a);
     ZeroCheck((uint16_t)a);
-    cycles_count += 2;
 }
 void mos6502::TXS() {
     sp = x;
-    cycles_count += 2;
 }
 void mos6502::TYA() {
     a = y;
     SignCheck((uint16_t)a);
     ZeroCheck((uint16_t)a);
-    cycles_count += 2;
 }
 void mos6502::InitializeOpcodeTable() {
-
+    //ADC immediate
+    opcodeTableInstruction.address_mode = &mos6502::ImmediateAddress;
+    opcodeTableInstruction.instruction = &mos6502::ADC;
+    opcodeTableInstruction.cycles = 2;
+    opcodeTable[0x69] = opcodeTableInstruction;
 }
 mos6502::mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t)) {
     read = Read;
