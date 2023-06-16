@@ -12,8 +12,9 @@
 
 /*
     TODO:
-        -should I put addressing functions into jump table or brute force all 151 instructions?
         -figure out relative addressing mode for branch instructions
+        -implement interrupt code
+        -fill out opcode table
         -figure out test to see if page has been crossed in memory access (used test from rubbermallet, need to convince myself it works)
         -finish instructions
         -testing (https://www.nesdev.org/wiki/Visual6502wiki/6502TestPrograms)
@@ -48,10 +49,14 @@ private:
     Instruction opcodeTableInstruction;
     std::unordered_map<uint8_t, Instruction> opcodeTable;
     void InitializeOpcodeTable();
+    //flag helper functions
     void ZeroCheck(uint16_t value);
     void CarryCheck(uint16_t value);
     void OverflowCheck(uint16_t value);
     void SignCheck(uint16_t value);
+    //address helper functions (need to figure out which mode has wrap around bug)
+    void ImpliedAddress() {};
+    void AccumulatorAddres() {};
     void ImmediateAddress();
     void AbsoluteAddress();
     void ZeroPageAddress();
@@ -61,41 +66,71 @@ private:
     void ZeroPageYAddress();
     void ZeroPageXIndirectAddress();
     void ZeroPageYIndirectAddress(bool addExtraCycle);
+    void RelativeAddress();
+    //instruction functions
     void ADC();
+    void AND();
+    void ASL();
     void BCC();
     void BCS();
     void BEQ();
+    void BIT();
+    void BMI();
+    void BNE();
+    void BPL();
+    void BRK();
+    void BVC();
+    void BVS();
     void CLC();
     void CLD();
     void CLI();
     void CLV();
+    void CMP();
+    void CPX();
+    void CPY();
+    void DEC();
     void DEX();
     void DEY();
+    void EOR();
+    void INC();
     void INX();
     void INY();
-    void JMP_ABSOLUTE();
-    void JMP_ABSOLUTE_INDIRECT();
+    void JMP();
+    void JSR();
     void LDA();
+    void LDX();
+    void LDY();
+    void LSR();
     void NOP();
+    void ORA();
     void PHA();
     void PHP();
     void PLA();
     void PLP();
+    void ROL();
+    void ROR();
+    void RTI();
     void RTS();
+    void SBC();
     void SEC();
     void SED();
     void SEI();
     void STA();
+    void STX();
+    void STY();
     void TAX();
     void TAY();
     void TSX();
     void TXA();
     void TXS();
     void TYA();
+    //fetch & execute helper functions
+    uint8_t FetchInstruction();
 public:
     mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t));
     void Reset();
     void NMI();
     void IRQ();
+    void StepInstruction();
     uint64_t getCycles() const {return cycles_count;}
 };

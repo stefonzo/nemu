@@ -132,17 +132,7 @@ void mos6502::INY() {
     SignCheck((uint16_t)y);
     ZeroCheck((uint16_t)y);
 }
-void mos6502::JMP_ABSOLUTE() {
-    AbsoluteAddress();
-    pc = address;
-}
-void mos6502::JMP_ABSOLUTE_INDIRECT() {
-    uint8_t la = read(pc++);
-    uint8_t ha = read(pc++);
-    address = (uint16_t(ha) << 8) | la;
-    la = read(address++);
-    ha = read(address);
-    address = (uint16_t(ha) << 8) | la;
+void mos6502::JMP() {
     pc = address;
 }
 void mos6502::LDA() {
@@ -209,6 +199,9 @@ void mos6502::TYA() {
     SignCheck((uint16_t)a);
     ZeroCheck((uint16_t)a);
 }
+uint8_t mos6502::FetchInstruction() {
+    return read(pc++);
+}
 void mos6502::InitializeOpcodeTable() {
     //ADC immediate
     opcodeTableInstruction.address_mode = &mos6502::ImmediateAddress;
@@ -221,4 +214,12 @@ mos6502::mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t)) {
     write = Write;
     cycles_count = 0, executed_instructions = 0;
     InitializeOpcodeTable();
+}
+void mos6502::StepInstruction() {
+    uint8_t opcode = FetchInstruction();
+    Instruction step_instruction = opcodeTable[opcode];
+    (this->*step_instruction.address_mode)();
+    (this->*step_instruction.instruction)();
+    cycles_count += step_instruction.cycles;
+    executed_instructions += 1;
 }
