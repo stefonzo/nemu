@@ -6,16 +6,17 @@
 
 #define NES6502
 // Please check out the following code/resource, been my main reference so far
+// https://github.com/gianlucag/mos6502
 // rubbermallet.org/fake6502.c
 // https://www.pagetable.com/c64ref/6502/
 
 /*
     TODO:
-        -put flag code into functions (can I cast x & y registers to input for helper functions?)
-        -put address code into functions
+        -should I put addressing functions into jump table or brute force all 151 instructions?
+        -figure out relative addressing mode for branch instructions
         -figure out test to see if page has been crossed in memory access (used test from rubbermallet, need to convince myself it works)
         -finish instructions
-        -testing
+        -testing (https://www.nesdev.org/wiki/Visual6502wiki/6502TestPrograms)
  */
 
 //stack is page 1
@@ -32,7 +33,7 @@
 class mos6502 {
 private:
     //state variables for 6502 cpu registers
-    uint16_t pc, address;
+    uint16_t pc, address; //address is helper variable
     uint8_t a, x, y, sp, flag;
     uint64_t cycles_count, executed_instructions;
     uint8_t (*read)(uint16_t);
@@ -51,7 +52,7 @@ private:
     void ZeroPageXAddress();
     void ZeroPageYAddress();
     void ZeroPageXIndirectAddress();
-    void ZeroPageYIndirectAddress();
+    void ZeroPageYIndirectAddress(bool addExtraCycle);
                                     //Assembly:       Opcode   Cycles   Bytes
     void InitializeOpcodeTable();   //-----------------------------------------
     void ADC_IMMEDIATE();           //ADC #$nn        $69      2        2
@@ -98,7 +99,8 @@ private:
     void TYA();                     //TYA             $98      2        1
 public:
     mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t));
-    void Reset6502();
+    void Reset();
     void NMI();
+    void IRQ();
     uint64_t getCycles() const {return cycles_count;}
 };

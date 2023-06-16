@@ -63,11 +63,21 @@ void mos6502::ZeroPageYAddress() {
     address = ((uint16_t)read(pc++) + y) & 0x00FF;
 }
 void mos6502::ZeroPageXIndirectAddress() {
-    
+    address = ((uint16_t)read(pc++) + x) & 0x00FF;
+    uint8_t la = read(address);
+    uint8_t ha = read((address+1) & 0x00FF); //indirect address is in zero page so need to ensure that wrap around occurs
+    address = (uint16_t(ha) << 8) | la;
 }
-void mos6502::ZeroPageYIndirectAddress() {
-    
+void mos6502::ZeroPageYIndirectAddress(bool addExtraCycle) {
+    address = ((uint16_t)read(pc++)); //ofc there's one assembly instruction that has a constant number of cycles that uses this addressing mode...
+    uint8_t la = read(address);
+    uint8_t ha = read((address+1) & 0x00FF);
+    address = (uint16_t(ha) << 8) | la;
+    uint16_t startpage = address & 0xFF00;
+    address += y;
+    if (addExtraCycle && (startpage != (address & 0xFF00))) cycles_count++;
 }
+//6502 instructions
 void mos6502::ADC_IMMEDIATE() {
     ImmediateAddress();
     uint8_t m = read(address);
@@ -141,10 +151,28 @@ void mos6502::ADC_X_ZEROPAGE() {
     cycles_count += 4;
 }
 void mos6502::ADC_X_ZEROPAGE_INDIRECT() {
-    
+    ZeroPageXIndirectAddress();
+    uint8_t m = read(address);
+    uint8_t c = flag & C;
+    uint16_t sum = a + m + c;
+    CarryCheck(sum);
+    ZeroCheck(sum);
+    SignCheck(sum);
+    OverflowCheck(sum);
+    a = (uint8_t)sum;
+    cycles_count += 6;
 }
 void mos6502::ADC_Y_ZEROPAGE_INDIRECT() {
-    
+    ZeroPageYIndirectAddress(true);
+    uint8_t m = read(address);
+    uint8_t c = flag & C;
+    uint16_t sum = a + m + c;
+    CarryCheck(sum);
+    ZeroCheck(sum);
+    SignCheck(sum);
+    OverflowCheck(sum);
+    a = (uint8_t)sum;
+    cycles_count += 5;
 }
 void mos6502::BCC() {
     
@@ -173,48 +201,26 @@ void mos6502::CLV() {
 }
 void mos6502::DEX() {
     x -= 1;
-    //check N flag
     SignCheck((uint16_t)x);
-    //check Z flag
     ZeroCheck((uint16_t)x);
     cycles_count += 2;
 }
 void mos6502::DEY() {
     y -= 1;
-    //check N flag
     SignCheck((uint16_t)y);
-    //check Z flag
     ZeroCheck((uint16_t)y);
     cycles_count += 2;
 }
 void mos6502::INX() {
     x += 1;
-    if (x & N) {
-        flag |= N;
-    } else {
-        flag &= ~(N);
-    }
-    //check Z flag
-    if (x == 0x00) {
-        flag |= Z;
-    } else {
-        flag &= ~(Z);
-    }
+    SignCheck((uint16_t)x);
+    ZeroCheck((uint16_t)x);
     cycles_count += 2;
 }
 void mos6502::INY() {
     y += 1;
-    if (y & N) {
-        flag |= N;
-    } else {
-        flag &= ~(N);
-    }
-    //check Z flag
-    if (y == 0x00) {
-        flag |= Z;
-    } else {
-        flag &= ~(Z);
-    }
+    SignCheck((uint16_t)y);
+    ZeroCheck((uint16_t)y);
     cycles_count += 2;
 }
 void mos6502::JMP_ABSOLUTE() {
