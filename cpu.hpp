@@ -5,21 +5,33 @@
 #include <unordered_map>
 
 #define NES6502
-// Please check out the following code/resource, been my main reference so far
-// https://github.com/gianlucag/mos6502
-// rubbermallet.org/fake6502.c
-// https://www.pagetable.com/c64ref/6502/
-
+// Please check out the following code/resource, been my main references so far
+// https://github.com/gianlucag/mos6502 (initial c++ program I saw online)
+// rubbermallet.org/fake6502.c (was sourced by the above programmer and was the first program I tried to "pull apart")
+// https://www.pagetable.com/c64ref/6502/ (instruction & addressing info)
+// https://www.pagetable.com/?p=410 (NMI, IRQ, RESET info)
+// https://chat.openai.com/share/bca77b5d-b2c1-47c9-bcc4-1af5962ec19c (not always correct but saves me time googling stuff)
 /*
     TODO:
-        -figure out relative addressing mode for branch instructions
-        -implement interrupt code
+        -thoroughly comment code (this program is intended for educational purposes)
+        -put stack operations into private methods
+        -add getter methods for 6502 registers
         -fill out opcode table
-        -figure out test to see if page has been crossed in memory access (used test from rubbermallet, need to convince myself it works)
-        -finish instructions
+        -implement RAM datatype
+            -needs to be able to load a romfile
         -testing (https://www.nesdev.org/wiki/Visual6502wiki/6502TestPrograms)
+            -find suitable test rom
+        -implement BCD arithmetic (I don't really want to do that...)
  */
-
+//RESET address
+#define RESET_LOW 0xFFFC
+#define RESET_HIGH 0xFFFD
+//IRQ interrupt address
+#define IRQ_LOW 0xFFFE
+#define IRQ_HIGH 0xFFFF
+//NMI interrupt address
+#define NMI_LOW 0xFFFA
+#define NMI_HIGH 0xFFFB
 //stack is page 1
 #define SB 0x01FF // (SB = stack base)
 //Flag masks
@@ -59,6 +71,7 @@ private:
     void AccumulatorAddres() {};
     void ImmediateAddress();
     void AbsoluteAddress();
+    void AbsoluteIndirectAddress();
     void ZeroPageAddress();
     void AbsoluteXAddress();
     void AbsoluteYAddress();
@@ -71,6 +84,7 @@ private:
     void ADC();
     void AND();
     void ASL();
+    void ASL_ACC(); //accumulator for operand instead of memory
     void BCC();
     void BCS();
     void BEQ();
@@ -101,6 +115,7 @@ private:
     void LDX();
     void LDY();
     void LSR();
+    void LSR_ACC();
     void NOP();
     void ORA();
     void PHA();
@@ -108,7 +123,9 @@ private:
     void PLA();
     void PLP();
     void ROL();
+    void ROL_ACC();
     void ROR();
+    void ROR_ACC();
     void RTI();
     void RTS();
     void SBC();
