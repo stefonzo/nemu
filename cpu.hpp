@@ -49,8 +49,10 @@ private:
     uint16_t pc, address; //address is helper variable
     uint8_t a, x, y, sp, flag;
     uint64_t cycles_count, executed_instructions;
-    uint8_t (*read)(uint16_t);
-    void (*write)(uint16_t, uint8_t);
+//    uint8_t (*read)(uint16_t);
+//    void (*write)(uint16_t, uint8_t);
+    virtual uint8_t read(uint16_t) { =0; };
+    virtual void write(uint16_t, uint8_t) { = 0; };
     typedef void (mos6502::*InstructionMethod)(); //function pointer for jump table
     typedef void (mos6502::*AddressMethod)();
     struct Instruction { //idea from Gian's program

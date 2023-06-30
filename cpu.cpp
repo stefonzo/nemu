@@ -510,8 +510,6 @@ void mos6502::InitializeOpcodeTable() {
     
 }
 mos6502::mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t)) {
-    read = Read;
-    write = Write;
     cycles_count = 0, executed_instructions = 0;
     InitializeOpcodeTable();
 }
