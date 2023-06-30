@@ -51,8 +51,8 @@ private:
     uint64_t cycles_count, executed_instructions;
 //    uint8_t (*read)(uint16_t);
 //    void (*write)(uint16_t, uint8_t);
-    virtual uint8_t read(uint16_t) { =0; };
-    virtual void write(uint16_t, uint8_t) { = 0; };
+    virtual uint8_t read(uint16_t) = 0;
+    virtual void write(uint16_t, uint8_t) = 0;
     typedef void (mos6502::*InstructionMethod)(); //function pointer for jump table
     typedef void (mos6502::*AddressMethod)();
     struct Instruction { //idea from Gian's program
@@ -150,7 +150,7 @@ private:
     //fetch & execute helper functions
     uint8_t FetchInstruction();
 public:
-    mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t));
+    mos6502();
     void Reset();
     void NMI();
     void IRQ();

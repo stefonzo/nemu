@@ -509,7 +509,7 @@ void mos6502::InitializeOpcodeTable() {
     //ADC instructions
     
 }
-mos6502::mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t)) {
+mos6502::mos6502() {
     cycles_count = 0, executed_instructions = 0;
     InitializeOpcodeTable();
 }
