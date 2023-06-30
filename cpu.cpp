@@ -40,7 +40,19 @@ void mos6502::AbsoluteAddress() {
 void mos6502::ZeroPageAddress() {
     address = (uint16_t)read(pc++);
 }
-void mos6502::AbsoluteXAddress() {
+void mos6502::AbsoluteXAddressConstant() {
+    uint8_t la = read(pc++);
+    uint8_t ha = read(pc++);
+    address = (uint16_t(ha) << 8) | la;
+    address += x;
+}
+void mos6502::AbsoluteYAddressConstant() {
+    uint8_t la = read(pc++);
+    uint8_t ha = read(pc++);
+    address = (uint16_t(ha) << 8) | la;
+    address += y;
+}
+void mos6502::AbsoluteXAddressVariable() {
     uint8_t la = read(pc++);
     uint8_t ha = read(pc++);
     address = (uint16_t(ha) << 8) | la;
@@ -48,7 +60,7 @@ void mos6502::AbsoluteXAddress() {
     address += x;
     if (startpage != (address & 0xFF00)) cycles_count++; //page check from rubbermallet
 }
-void mos6502::AbsoluteYAddress() {
+void mos6502::AbsoluteYAddressVariable() {
     uint8_t la = read(pc++);
     uint8_t ha = read(pc++);
     address = (uint16_t(ha) << 8) | la;
@@ -76,14 +88,22 @@ void mos6502::ZeroPageXIndirectAddress() {
     uint8_t ha = read((address+1) & 0x00FF); //indirect address is in zero page so need to ensure that wrap around occurs
     address = (uint16_t(ha) << 8) | la;
 }
-void mos6502::ZeroPageYIndirectAddress(bool addExtraCycle) {
+void mos6502::ZeroPageYIndirectAddressConstant() {
+    address = ((uint16_t)read(pc++)); //ofc there's one assembly instruction that has a constant number of cycles that uses this addressing mode...
+    uint8_t la = read(address);
+    uint8_t ha = read((address+1) & 0x00FF);
+    address = (uint16_t(ha) << 8) | la;
+    address += y;
+}
+void mos6502::ZeroPageYIndirectAddressVariable() {
     address = ((uint16_t)read(pc++)); //ofc there's one assembly instruction that has a constant number of cycles that uses this addressing mode...
     uint8_t la = read(address);
     uint8_t ha = read((address+1) & 0x00FF);
     address = (uint16_t(ha) << 8) | la;
     uint16_t startpage = address & 0xFF00;
+    //add page check
     address += y;
-    if (addExtraCycle && (startpage != (address & 0xFF00))) cycles_count++;
+    if (startpage != (address & 0xFF00)) cycles_count++;
 }
 void mos6502::RelativeAddress() {
     int8_t offset = read(pc++);
@@ -485,15 +505,13 @@ uint8_t mos6502::FetchInstruction() {
     return read(pc++);
 }
 void mos6502::InitializeOpcodeTable() {
-    //ADC immediate
-    opcodeTableInstruction.address_mode = &mos6502::ImmediateAddress;
-    opcodeTableInstruction.instruction = &mos6502::ADC;
-    opcodeTableInstruction.cycles = 2;
-    opcodeTable[0x69] = opcodeTableInstruction;
+    Instruction instruction;
+    //ADC instructions
+    
 }
-mos6502::mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t)) {
-    read = Read;
-    write = Write;
+mos6502::mos6502(std::function<uint8_t(uint16_t)> read_func, std::function<void(uint16_t, uint8_t)> write_func) {
+    read = read_func;
+    write = write_func;
     cycles_count = 0, executed_instructions = 0;
     InitializeOpcodeTable();
 }

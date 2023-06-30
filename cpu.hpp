@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <unordered_map>
+#include <functional>
 
 #define NES6502
 // Please check out the following code/resource, been my main references so far
@@ -49,8 +50,10 @@ private:
     uint16_t pc, address; //address is helper variable
     uint8_t a, x, y, sp, flag;
     uint64_t cycles_count, executed_instructions;
-    uint8_t (*read)(uint16_t);
-    void (*write)(uint16_t, uint8_t);
+    std::function<uint8_t(uint16_t)> read;
+    std::function<void(uint16_t, uint8_t)> write;
+//    uint8_t (*read)(uint16_t);
+//    void (*write)(uint16_t, uint8_t);
     typedef void (mos6502::*InstructionMethod)(); //function pointer for jump table
     typedef void (mos6502::*AddressMethod)();
     struct Instruction { //idea from Gian's program
@@ -58,7 +61,6 @@ private:
         InstructionMethod instruction;
         uint8_t cycles;
     };
-    Instruction opcodeTableInstruction;
     std::unordered_map<uint8_t, Instruction> opcodeTable;
     void InitializeOpcodeTable();
     //flag helper functions
@@ -73,13 +75,18 @@ private:
     void AbsoluteAddress();
     void AbsoluteIndirectAddress();
     void ZeroPageAddress();
-    void AbsoluteXAddress();
-    void AbsoluteYAddress();
+    void AbsoluteXAddressConstant();
+    void AbsoluteYAddressConstant();
+    void AbsoluteXAddressVariable();
+    void AbsoluteYAddressVariable();
     void ZeroPageXAddress();
     void ZeroPageYAddress();
     void ZeroPageXIndirectAddress();
-    void ZeroPageYIndirectAddress(bool addExtraCycle);
+    void ZeroPageYIndirectAddressConstant();
+    void ZeroPageYIndirectAddressVariable();
     void RelativeAddress();
+    
+    uint16_t ReadDoubleWord(); //might get rid of this function...
     //instruction functions
     void ADC();
     void AND();
@@ -144,7 +151,9 @@ private:
     //fetch & execute helper functions
     uint8_t FetchInstruction();
 public:
-    mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t));
+    mos6502(std::function<uint8_t(uint16_t)> read_func, std::function<void(uint16_t, uint8_t)> write_func);
+//    mos6502(uint8_t (*Read)(uint16_t), void (*Write)(uint16_t, uint8_t));
+    //mos6502(std::function<uint8_t(uint16_t)> Read, std::function<void(uint16_t, uint8_t)> Write);
     void Reset();
     void NMI();
     void IRQ();
