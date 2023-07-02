@@ -1,7 +1,8 @@
 #pragma once
 #include <stdint.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include <stdio.h>
+//#include <SDL2/SDL.h>
+//#include <SDL2/SDL_ttf.h>
 #include <unordered_map>
 
 #define NES6502
@@ -17,8 +18,6 @@
         -put stack operations into private methods
         -add getter methods for 6502 registers
         -fill out opcode table
-        -implement RAM datatype
-            -needs to be able to load a romfile
         -testing (https://www.nesdev.org/wiki/Visual6502wiki/6502TestPrograms)
             -find suitable test rom
         -implement BCD arithmetic (I don't really want to do that...)
@@ -51,8 +50,6 @@ private:
     uint64_t cycles_count, executed_instructions;
 //    uint8_t (*read)(uint16_t);
 //    void (*write)(uint16_t, uint8_t);
-    virtual uint8_t read(uint16_t) = 0;
-    virtual void write(uint16_t, uint8_t) = 0;
     typedef void (mos6502::*InstructionMethod)(); //function pointer for jump table
     typedef void (mos6502::*AddressMethod)();
     struct Instruction { //idea from Gian's program
@@ -69,7 +66,7 @@ private:
     void SignCheck(uint16_t value);
     //address helper functions (need to figure out which mode has wrap around bug)
     void ImpliedAddress() {};
-    void AccumulatorAddres() {};
+    void AccumulatorAddress() {};
     void ImmediateAddress();
     void AbsoluteAddress();
     void AbsoluteIndirectAddress();
@@ -150,10 +147,19 @@ private:
     //fetch & execute helper functions
     uint8_t FetchInstruction();
 public:
+    virtual uint8_t read(uint16_t) = 0;
+    virtual void write(uint16_t, uint8_t) = 0;
     mos6502();
     void Reset();
     void NMI();
     void IRQ();
     void StepInstruction();
-    uint64_t getCycles() const {return cycles_count;}
+    uint64_t GetCycles() const {return cycles_count;}
+    uint64_t GetInstructions() const {return executed_instructions;}
+    uint8_t GetA() { return a; };
+    uint8_t GetX() { return x; };
+    uint8_t GetY() { return y; };
+    uint8_t GetFlag() { return flag; };
+    uint8_t GetSP() { return sp; };
+    uint16_t GetPC() { return pc; };
 };
