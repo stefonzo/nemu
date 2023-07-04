@@ -1,9 +1,9 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
-//#include <SDL2/SDL.h>
-//#include <SDL2/SDL_ttf.h>
 #include <unordered_map>
+
+//Dedicated to Mary & Paul Robinson
 
 #define NES6502
 // Please check out the following code/resource, been my main references so far
@@ -12,14 +12,13 @@
 // https://www.pagetable.com/c64ref/6502/ (instruction & addressing info)
 // https://www.pagetable.com/?p=410 (NMI, IRQ, RESET info)
 // https://chat.openai.com/share/bca77b5d-b2c1-47c9-bcc4-1af5962ec19c (not always correct but saves me time googling stuff)
+// https://skilldrick.github.io/easy6502/ writing pure machine code is fun, so I used Nick's hexdump for my inline assembly test program
 /*
     TODO:
-        -thoroughly comment code (this program is intended for educational purposes)
-        -put stack operations into private methods
-        -add getter methods for 6502 registers
-        -fill out opcode table
         -testing (https://www.nesdev.org/wiki/Visual6502wiki/6502TestPrograms)
             -find suitable test rom
+        -thoroughly comment code (this program is intended for educational purposes)
+        -put stack operations into private methods
         -implement BCD arithmetic (I don't really want to do that...)
  */
 //RESET address
@@ -48,8 +47,6 @@ private:
     uint16_t pc, address; //address is helper variable
     uint8_t a, x, y, sp, flag;
     uint64_t cycles_count, executed_instructions;
-//    uint8_t (*read)(uint16_t);
-//    void (*write)(uint16_t, uint8_t);
     typedef void (mos6502::*InstructionMethod)(); //function pointer for jump table
     typedef void (mos6502::*AddressMethod)();
     struct Instruction { //idea from Gian's program
@@ -81,8 +78,6 @@ private:
     void ZeroPageYIndirectAddressConstant();
     void ZeroPageYIndirectAddressVariable();
     void RelativeAddress();
-    
-    uint16_t ReadDoubleWord(); //might get rid of this function...
     //instruction functions
     void ADC();
     void AND();
@@ -144,8 +139,7 @@ private:
     void TXA();
     void TXS();
     void TYA();
-    //fetch & execute helper functions
-    uint8_t FetchInstruction();
+    uint8_t FetchInstruction();  //fetch & execute helper function
 public:
     virtual uint8_t read(uint16_t) = 0;
     virtual void write(uint16_t, uint8_t) = 0;

@@ -1,21 +1,21 @@
 #include "cpu.hpp"
 //flag helper functions
-void mos6502::ZeroCheck(uint16_t value) {
-    if (value & 0x00FF) {
-        flag &= ~(Z);
+void mos6502::ZeroCheck(uint16_t value) { // 8 bit register values are typecast to uint16_t before being checked by flag helper functions (useful for CarryCheck)
+    if (value & 0x00FF) { // if value = 0 then condition is false and zero flag is set
+        flag &= ~(Z); // value != 0 so flag is anded with inverse of the zero mask so all bits of the flag are ignored except for the zero bit which is set to 0
     } else {
         flag |= Z;
     }
 }
 void mos6502::CarryCheck(uint16_t value) {
-    if (value & 0xFF00) {
+    if (value & 0xFF00) { // if two 8 bit numbers sum overflows bit 9 will be set to 1, if the 9th bit of value is 1 then condition is true and the carry flag bit is set to 1 (otherwise it is set to 0)
         flag |= C;
     } else {
         flag &= ~(C);
     }
 }
 void mos6502::OverflowCheck(uint16_t value){
-    if (((uint8_t)value & N) ^ (a & N)) {
+    if (((uint8_t)value & N) ^ (a & N)) { //had to work out math/logic for this conditional test on paper, you and the two values to capture the N bit which is what you need to test in the overflow check. Xoring the bits enables you to determine if they are different (ie: if they have changed after a operation)
         flag |= V;
     } else {
         flag &= ~(V);
@@ -105,11 +105,11 @@ void mos6502::ZeroPageYIndirectAddressVariable() {
     address += y;
     if (startpage != (address & 0xFF00)) cycles_count++;
 }
-void mos6502::RelativeAddress() {
+void mos6502::RelativeAddress() { //fix this function then code should work
     int8_t offset = read(pc++);
     uint16_t startpage = address & 0xFF00;
-    pc += offset;
-    if ((pc & 0xFF00) != startpage) cycles_count++;
+    address = pc + offset;
+    if ((address & 0xFF00) != startpage) cycles_count++;
 }
 //6502 instructions
 void mos6502::ADC() {
@@ -166,6 +166,7 @@ void mos6502::BCS() {
 void mos6502::BEQ() {
     if (flag & Z) { //branch if zero bit is 1
         pc = address;
+        cycles_count++;
     }
 }
 void mos6502::BIT() {
@@ -240,20 +241,20 @@ void mos6502::CMP() {
 }
 void mos6502::CPX() {
     uint8_t m = read(address);
-    uint16_t test = a - x;
+    uint16_t test = x - m;
     ZeroCheck((uint16_t)test);
     SignCheck((uint16_t)test);
-    if ( m <= a)
+    if ( m <= x)
         flag |= C;
     else
         flag &= ~(C);
 }
 void mos6502::CPY() {
     uint8_t m = read(address);
-    uint16_t test = a - y;
+    uint16_t test = y - m;
     ZeroCheck((uint16_t)test);
     SignCheck((uint16_t)test);
-    if ( m <= a)
+    if ( m <= y)
         flag |= C;
     else
         flag &= ~(C);
@@ -506,6 +507,13 @@ uint8_t mos6502::FetchInstruction() {
 }
 void mos6502::InitializeOpcodeTable() {
     Instruction instruction;
+    //initalize opcode table with all nops so any undocumented instructions are treated as such
+    instruction.address_mode = &mos6502::ImpliedAddress;
+    instruction.instruction = &mos6502::NOP;
+    instruction.cycles = 2;
+    for (uint8_t i = 0; i < 0xFF; i++) {
+        opcodeTable[i] = instruction;
+    }
     //ADC instructions
     instruction.address_mode = &mos6502::ImmediateAddress;
     instruction.instruction = &mos6502::ADC;
@@ -1013,9 +1021,46 @@ void mos6502::InitializeOpcodeTable() {
     instruction.cycles = 2;
     opcodeTable[0xEA] = instruction;
     
-    //fill out undocumented opcodes with nops
-    
     //ORA instruction
+    instruction.address_mode = &mos6502::ImmediateAddress;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 2;
+    opcodeTable[0x09] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 4;
+    opcodeTable[0x0D] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteXAddressVariable;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 4;
+    opcodeTable[0x1D] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteYAddressVariable;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 4;
+    opcodeTable[0x19] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 3;
+    opcodeTable[0x05] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXAddress;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 4;
+    opcodeTable[0x15] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXIndirectAddress;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 6;
+    opcodeTable[0x01] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageYIndirectAddressVariable;
+    instruction.instruction = &mos6502::ORA;
+    instruction.cycles = 5;
+    opcodeTable[0x11] = instruction;
     
     //PHA instruction
     instruction.address_mode = &mos6502::ImpliedAddress;
@@ -1042,7 +1087,57 @@ void mos6502::InitializeOpcodeTable() {
     opcodeTable[0x28] = instruction;
     
     //ROL instruction
+    instruction.address_mode = &mos6502::AccumulatorAddress;
+    instruction.instruction = &mos6502::ROL_ACC;
+    instruction.cycles = 2;
+    opcodeTable[0x2A] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::ROL;
+    instruction.cycles = 6;
+    opcodeTable[0x2E] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteXAddressConstant;
+    instruction.instruction = &mos6502::ROL;
+    instruction.cycles = 7;
+    opcodeTable[0x3E] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::ROL;
+    instruction.cycles = 5;
+    opcodeTable[0x26] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXAddress;
+    instruction.instruction = &mos6502::ROL;
+    instruction.cycles = 6;
+    opcodeTable[0x36] = instruction;
+    
     //ROR instruction
+    instruction.address_mode = &mos6502::AccumulatorAddress;
+    instruction.instruction = &mos6502::ROR_ACC;
+    instruction.cycles = 2;
+    opcodeTable[0x6A] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::ROR;
+    instruction.cycles = 6;
+    opcodeTable[0x6E] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteXAddressConstant;
+    instruction.instruction = &mos6502::ROR;
+    instruction.cycles = 7;
+    opcodeTable[0x7E] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::ROR;
+    instruction.cycles = 5;
+    opcodeTable[0x66] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXAddress;
+    instruction.instruction = &mos6502::ROR;
+    instruction.cycles = 6;
+    opcodeTable[0x76] = instruction;
+    
     //RTI instruction
     instruction.address_mode = &mos6502::ImpliedAddress;
     instruction.instruction = &mos6502::RTI;
@@ -1055,7 +1150,71 @@ void mos6502::InitializeOpcodeTable() {
     instruction.cycles = 6;
     opcodeTable[0x60] = instruction;
     
-    //SBC instruction
+    //Store instructions
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 4;
+    opcodeTable[0x8D] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteXAddressConstant;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 5;
+    opcodeTable[0x9D] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteYAddressConstant;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 5;
+    opcodeTable[0x99] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 3;
+    opcodeTable[0x85] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXAddress;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 4;
+    opcodeTable[0x95] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXIndirectAddress;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 6;
+    opcodeTable[0x81] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageYIndirectAddressConstant;
+    instruction.instruction = &mos6502::STA;
+    instruction.cycles = 6;
+    opcodeTable[0x91] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::STX;
+    instruction.cycles = 4;
+    opcodeTable[0x8E] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::STX;
+    instruction.cycles = 3;
+    opcodeTable[0x86] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageYAddress;
+    instruction.instruction = &mos6502::STX;
+    instruction.cycles = 4;
+    opcodeTable[0x96] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::STY;
+    instruction.cycles = 4;
+    opcodeTable[0x8C] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::STY;
+    instruction.cycles = 3;
+    opcodeTable[0x84] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageYAddress;
+    instruction.instruction = &mos6502::STY;
+    instruction.cycles = 4;
+    opcodeTable[0x94] = instruction;
     
     //Set flag instructions
     instruction.address_mode = &mos6502::ImpliedAddress;
@@ -1073,7 +1232,46 @@ void mos6502::InitializeOpcodeTable() {
     instruction.cycles = 2;
     opcodeTable[0x78] = instruction;
     
-    //Store instructions
+    //SBC instructions
+    instruction.address_mode = &mos6502::ImmediateAddress;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 2;
+    opcodeTable[0xE9] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteAddress;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 4;
+    opcodeTable[0xED] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteXAddressVariable;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 4;
+    opcodeTable[0xFD] = instruction;
+    
+    instruction.address_mode = &mos6502::AbsoluteYAddressVariable;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 4;
+    opcodeTable[0xF9] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageAddress;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 3;
+    opcodeTable[0xE5] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXAddress;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 4;
+    opcodeTable[0xF5] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageXIndirectAddress;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 6;
+    opcodeTable[0xE1] = instruction;
+    
+    instruction.address_mode = &mos6502::ZeroPageYIndirectAddressVariable;
+    instruction.instruction = &mos6502::SBC;
+    instruction.cycles = 5;
+    opcodeTable[0xF1] = instruction;
     
     //Transfer instructions
     instruction.address_mode = &mos6502::ImpliedAddress;
